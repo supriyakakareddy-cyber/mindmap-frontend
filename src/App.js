@@ -9,19 +9,16 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const [previewPages, setPreviewPages] = useState([]);
-  const [status, setStatus] = useState("idle");
-
   const BACKEND_URL =
     "https://mindmap-backend-production-11a6.up.railway.app/generate-mindmap";
 
   const BASE_URL =
     "https://mindmap-backend-production-11a6.up.railway.app";
 
-  const handleGenerate = async (selectedPage = null) => {
+  const handleGenerate = async () => {
     console.log("🚀 handleGenerate CALLED");
 
-    if (!text.trim() && !selectedPage) {
+    if (!text.trim()) {
       alert("Please enter some text");
       return;
     }
@@ -29,24 +26,14 @@ function App() {
     try {
       setLoading(true);
       setErrorMsg("");
+      setMindmap(null);
+      setMindmapUrl("");
 
-      if (!selectedPage) {
-        setMindmap(null);
-        setMindmapUrl("");
-      }
-
-      const payload = selectedPage
-        ? {
-            input_type: "text",
-            content: text,
-            mode: "balanced",
-            select_page: selectedPage,
-          }
-        : {
-            input_type: "text",
-            content: text,
-            mode: "balanced",
-          };
+      const payload = {
+        input_type: "text",
+        content: text,
+        mode: "balanced",
+      };
 
       const res = await axios.post(BACKEND_URL, payload, {
         timeout: 50000,
@@ -55,10 +42,10 @@ function App() {
       console.log("✅ RESPONSE:", res.data);
 
       if (res.data.status === "success" && res.data.mindmap) {
-        // ✅ FIX 1: SET MINDMAP (THIS WAS YOUR MAIN BUG)
+        // ✅ set graph data
         setMindmap(res.data.mindmap);
 
-        // ✅ FIX 2: FIX URL (REMOVE LOCALHOST)
+        // ✅ fix localhost URL → production URL
         if (res.data.url) {
           const fixedUrl = res.data.url.replace(
             "http://localhost:8000",
@@ -66,12 +53,6 @@ function App() {
           );
           setMindmapUrl(fixedUrl);
         }
-
-        setPreviewPages([]);
-        setStatus("success");
-      } else if (res.data.status === "need_user_input") {
-        setPreviewPages(res.data.pages_preview || []);
-        setStatus("need_input");
       } else {
         setErrorMsg(res.data.message || "Backend error");
       }
@@ -118,8 +99,8 @@ function App() {
           placeholder="Enter text..."
         />
 
-        <div style={{ marginTop: 10 }}>
-          <button onClick={() => handleGenerate()} disabled={loading}>
+        <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+          <button onClick={handleGenerate} disabled={loading}>
             {loading ? "Generating..." : "Generate"}
           </button>
 
@@ -130,6 +111,8 @@ function App() {
           )}
         </div>
 
+        {loading && <p>⏳ Generating mind map...</p>}
+
         {errorMsg && <p style={{ color: "red" }}>{errorMsg}</p>}
       </div>
 
@@ -138,7 +121,11 @@ function App() {
         {mindmap ? (
           <MindMap data={mindmap} />
         ) : (
-          <p style={{ textAlign: "center" }}>No mind map yet</p>
+          !loading && (
+            <p style={{ textAlign: "center", marginTop: 20 }}>
+              No mind map yet
+            </p>
+          )
         )}
       </div>
     </div>
